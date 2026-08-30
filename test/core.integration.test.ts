@@ -41,7 +41,7 @@ describe('Library, Deck, and project lifecycle', () => {
     const [same] = await importSkills(value.checkout, value.discovered, value.data);
     expect(same!.revision.hash).toBe(first!.revision.hash);
     expect((await listLibrary(value.data))).toHaveLength(1);
-    expect((await stat(join(first!.contentPath, 'scripts', 'run.sh'))).mode & 0o111).not.toBe(0);
+    if (process.platform !== 'win32') expect((await stat(join(first!.contentPath, 'scripts', 'run.sh'))).mode & 0o111).not.toBe(0);
 
     await writeFile(join(value.skill, 'SKILL.md'), '# Demo v2\n');
     await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);

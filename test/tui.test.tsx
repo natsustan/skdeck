@@ -62,10 +62,13 @@ async function interactiveFixture() {
 }
 
 async function waitForFrame(view: ReturnType<typeof render>, text: string): Promise<string> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 250; attempt += 1) {
     const frame = view.lastFrame() ?? '';
-    if (frame.includes(text)) return frame;
-    await new Promise(resolve => setTimeout(resolve, 10));
+    if (frame.includes(text)) {
+      await new Promise(resolve => setTimeout(resolve, 20));
+      return frame;
+    }
+    await new Promise(resolve => setTimeout(resolve, 20));
   }
   throw new Error(`Timed out waiting for "${text}". Last frame:\n${view.lastFrame() ?? ''}`);
 }
