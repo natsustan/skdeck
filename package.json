@@ -1,0 +1,39 @@
+{
+  "name": "skdeck",
+  "version": "0.1.0",
+  "description": "Manage reusable Agent Skills as versioned decks",
+  "type": "module",
+  "bin": {
+    "skdeck": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "bun build src/cli.tsx --outdir dist --target node --format esm --packages external --minify",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "commander": "^14.0.0",
+    "execa": "^9.6.0",
+    "ink": "^7.0.0",
+    "react": "^19.1.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "ink-testing-library": "^4.0.0",
+    "typescript": "^5.9.0"
+  },
+  "packageManager": "pnpm@10.33.0"
+}
