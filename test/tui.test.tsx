@@ -187,7 +187,10 @@ test('Project keyboard flow previews, cancels, applies, and removes a Deck', asy
   view.stdin.write('\r');
   await waitForFrame(view, 'Apply “frontend”?');
   view.stdin.write('\r');
+  view.stdin.write('\r');
   await waitForFrame(view, '● Applied frontend');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(view.lastFrame()).toContain('● Applied frontend');
   expect((await readProjectLock(value.projectRoot)).decks).toEqual([{id: frontend.id, name: 'frontend'}]);
 
   await new Promise(resolve => setTimeout(resolve, 20));
