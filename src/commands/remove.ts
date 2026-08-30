@@ -13,8 +13,8 @@ export async function removeCommand(deckArgument: string | undefined, project: s
   const [localDecks, lock] = await Promise.all([listDecks(), readProjectLock(projectRoot)]);
   const decks = [...localDecks, ...lock.decks.filter(installed => !localDecks.some(local => local.id === installed.id)).map(installed => ({schemaVersion: 1 as const, ...installed, skills: []}))];
   const deck = deckArgument ? findDeck(decks, deckArgument) : await selectDeck(decks, 'Select an installed Deck');
+  if (!lock.decks.some(installed => installed.id === deck.id)) throw new Error(`Deck "${deck.name}" is not installed in this project.`);
   const plan = await planRemoveDeck(deck, projectRoot);
-  if (plan.items.length === 0) throw new Error(`Deck "${deck.name}" is not installed in this project.`);
   if (!await confirmPlan(plan, 'Remove')) {
     if (plan.items.some(item => item.action === 'CONFLICT')) throw new Error('Restore or revert modified Skills before removing this Deck.');
     return;

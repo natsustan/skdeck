@@ -45,6 +45,8 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
   const [deckPickerCursor, setDeckPickerCursor] = useState(0);
   const [projectPlan, setProjectPlan] = useState<ProjectPlan>();
   const discoveryRef = useRef<Discovery | undefined>(undefined);
+  const busyRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
     const [nextLibrary, nextDecks, nextLock] = await Promise.all([listLibrary(dataRoot), listDecks(dataRoot), readProjectLock(projectRoot)]);
@@ -53,11 +55,26 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
 
   useEffect(() => { void refresh().catch(error => setStatus(error instanceof Error ? error.message : String(error))); }, [refresh]);
   useEffect(() => { discoveryRef.current = discovery; }, [discovery]);
-  useEffect(() => () => { void discoveryRef.current?.checkout.cleanup(); }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      void discoveryRef.current?.checkout.cleanup();
+      discoveryRef.current = undefined;
+    };
+  }, []);
 
   const run = useCallback((label: string, operation: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true); setStatus(label);
-    void operation().then(() => refresh()).catch(error => setStatus(error instanceof Error ? error.message : String(error))).finally(() => setBusy(false));
+    void operation()
+      .then(() => mountedRef.current ? refresh() : undefined)
+      .catch(error => { if (mountedRef.current) setStatus(error instanceof Error ? error.message : String(error)); })
+      .finally(() => {
+        busyRef.current = false;
+        if (mountedRef.current) setBusy(false);
+      });
   }, [refresh]);
   const projectDecks = [...decks, ...(lock?.decks.filter(installed => !decks.some(deck => deck.id === installed.id)).map(installed => ({schemaVersion: 1 as const, ...installed, skills: []})) ?? [])];
   const selectedDeck = decks[deckCursor];
@@ -67,6 +84,7 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
 
   useInput((character, key) => {
     if (key.ctrl && character === 'c') { exit(); return; }
+    if (busyRef.current) return;
     if (inputMode) {
       if (key.escape) { setInputMode(undefined); return; }
       if (inputMode.kind === 'deleteDeck') {
@@ -84,11 +102,19 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
         setInputMode(undefined);
         if (mode === 'url') run('Checking out repository…', async () => {
           const checkout = await checkoutGitHub(value);
+          let retained = false;
           try {
+            if (!mountedRef.current) return;
             const skills = await discoverSkills(checkout);
-            setDiscovery({checkout, skills, selected: new Set(skills.map(skill => skill.path))});
+            if (!mountedRef.current) return;
+            const next = {checkout, skills, selected: new Set(skills.map(skill => skill.path))};
+            discoveryRef.current = next;
+            setDiscovery(next);
+            retained = true;
             setCursor(0); setStatus(`Found ${skills.length} Skills`);
-          } catch (error) { await checkout.cleanup(); throw error; }
+          } finally {
+            if (!retained) await checkout.cleanup();
+          }
         });
         if (mode === 'newDeck') run('Creating Deck…', async () => {
           let deck = await createDeck(value, dataRoot);
@@ -132,9 +158,8 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
       }
       return;
     }
-    if (busy) return;
     if (page === 0 && discovery) {
-      if (key.escape) { void discovery.checkout.cleanup(); setDiscovery(undefined); setStatus('Checkout discarded'); return; }
+      if (key.escape) { void discovery.checkout.cleanup(); discoveryRef.current = undefined; setDiscovery(undefined); setStatus('Checkout discarded'); return; }
       if (key.upArrow) setCursor(value => Math.max(0, value - 1));
       if (key.downArrow) setCursor(value => Math.min(discovery.skills.length - 1, value + 1));
       if (character === ' ') setDiscovery(value => {
@@ -145,7 +170,11 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
       });
       if (key.return && discovery.selected.size > 0) run('Importing selected Skills…', async () => {
         const selected = discovery.skills.filter(skill => discovery.selected.has(skill.path));
-        await importSkills(discovery.checkout, selected, dataRoot); await discovery.checkout.cleanup(); setDiscovery(undefined); setStatus(`Imported ${skillCount(selected.length)}`);
+        await importSkills(discovery.checkout, selected, dataRoot);
+        await discovery.checkout.cleanup();
+        discoveryRef.current = undefined;
+        setDiscovery(undefined);
+        setStatus(`Imported ${skillCount(selected.length)}`);
       });
       return;
     }

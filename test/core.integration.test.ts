@@ -86,6 +86,20 @@ describe('Library, Deck, and project lifecycle', () => {
     expect((await readProjectLock(value.project)).skills).toHaveLength(0);
   });
 
+  test('applies and removes an empty Deck', async () => {
+    const value = await fixture();
+    const deck = await createDeck('empty', value.data);
+    const apply = await planDeck(deck, value.project, value.data);
+    expect(apply.items).toEqual([]);
+    await applyPlan(apply);
+    expect((await readProjectLock(value.project)).decks).toEqual([{id: deck.id, name: 'empty'}]);
+
+    const remove = await planRemoveDeck(deck, value.project);
+    expect(remove.items).toEqual([]);
+    await removeDeckFromProject(remove);
+    expect((await readProjectLock(value.project)).decks).toEqual([]);
+  });
+
   test('rejects symbolic links when hashing', async () => {
     const value = await fixture();
     await symlink('../SKILL.md', join(value.skill, 'linked'));

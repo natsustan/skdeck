@@ -14,7 +14,13 @@ export function parseGitHubUrl(input: string): GitHubUrl {
     throw new Error('Enter a complete GitHub URL, for example https://github.com/owner/repo.');
   }
   if (url.hostname.toLowerCase() !== 'github.com') throw new Error('Only github.com URLs are supported.');
-  const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  const parts = url.pathname.split('/').filter(Boolean).map(part => {
+    const decoded = decodeURIComponent(part);
+    if (decoded === '.' || decoded === '..' || decoded.includes('/') || decoded.includes('\\')) {
+      throw new Error('The GitHub URL contains an invalid path segment.');
+    }
+    return decoded;
+  });
   if (parts.length < 2) throw new Error('The GitHub URL must include an owner and repository.');
   const owner = parts[0]!;
   const repository = parts[1]!.replace(/\.git$/, '');

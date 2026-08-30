@@ -11,4 +11,9 @@ describe('parseGitHubUrl', () => {
     expect(() => parseGitHubUrl('https://gitlab.com/acme/skills')).toThrow('Only github.com');
     expect(() => parseGitHubUrl('https://github.com/acme/skills/blob/main/SKILL.md')).toThrow('/tree/ref/path');
   });
+
+  test('rejects encoded path traversal', () => {
+    expect(() => parseGitHubUrl('https://github.com/acme/skills/tree/main/..%2f..%2fsecret')).toThrow('invalid path segment');
+    expect(() => parseGitHubUrl('https://github.com/acme/skills/tree/main/foo%5c..%5csecret')).toThrow('invalid path segment');
+  });
 });

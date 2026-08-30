@@ -1,6 +1,6 @@
-import {mkdtemp, rm} from 'node:fs/promises';
+import {mkdtemp, realpath, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {isAbsolute, join, relative, resolve, sep} from 'node:path';
 import {execa} from 'execa';
 import {parseGitHubUrl} from './parse-url.js';
 
@@ -18,6 +18,11 @@ export interface Checkout {
 function remoteRefs(output: string): string[] {
   return output.split('\n').map(line => line.split('\t')[1]).filter((value): value is string => Boolean(value))
     .flatMap(ref => ref.startsWith('refs/heads/') ? [ref.slice(11)] : ref.startsWith('refs/tags/') && !ref.endsWith('^{}') ? [ref.slice(10)] : []);
+}
+
+function isInside(root: string, candidate: string): boolean {
+  const path = relative(root, candidate);
+  return path === '' || (path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path));
 }
 
 async function splitRef(cloneUrl: string, tail: string[]): Promise<{ref: string; path: string}> {
@@ -45,9 +50,13 @@ export async function checkoutGitHub(input: string): Promise<Checkout> {
       await execa('git', ['clone', '--depth', '1', parsed.cloneUrl, repositoryDirectory]);
     }
     const {stdout: commit} = await execa('git', ['rev-parse', 'HEAD'], {cwd: repositoryDirectory});
+    const sourceDirectory = resolve(repositoryDirectory, ...resolved.path.split('/').filter(Boolean));
+    if (!isInside(repositoryDirectory, sourceDirectory)) throw new Error('The GitHub tree path escapes the repository.');
+    const [realRepositoryDirectory, realSourceDirectory] = await Promise.all([realpath(repositoryDirectory), realpath(sourceDirectory)]);
+    if (!isInside(realRepositoryDirectory, realSourceDirectory)) throw new Error('The GitHub tree path escapes the repository.');
     return {
       directory: repositoryDirectory,
-      sourceDirectory: join(repositoryDirectory, ...resolved.path.split('/').filter(Boolean)),
+      sourceDirectory,
       owner: parsed.owner,
       repository: parsed.repository,
       sourceUrl: input,
