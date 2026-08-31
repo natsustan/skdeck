@@ -2,6 +2,7 @@ import {afterEach, describe, expect, test} from 'bun:test';
 import {mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import lockfile from 'proper-lockfile';
 import {addManyToDeck, addToDeck, createDeck} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
 import {hashDirectory} from '../src/core/hashing.js';
@@ -65,6 +66,19 @@ describe('Library, Deck, and project lifecycle', () => {
     expect((await listLibrary(value.data)).map(revision => revision.revision.hash).sort()).toEqual([...new Set(revisions.map(revision => revision.revision.hash))].sort());
     for (const revision of revisions) {
       expect((await readdir(join(revision.contentPath, '..'))).filter(entry => entry.endsWith('.tmp'))).toEqual([]);
+    }
+  });
+
+  test('lists the library while an import lock is held', async () => {
+    const value = await fixture();
+    await importSkills(value.checkout, value.discovered, value.data);
+    const skillsDirectory = join(value.data, 'skills');
+    const [storageDirectory] = await readdir(skillsDirectory);
+    const release = await lockfile.lock(join(skillsDirectory, storageDirectory!));
+    try {
+      expect(await listLibrary(value.data)).toHaveLength(1);
+    } finally {
+      await release();
     }
   });
 

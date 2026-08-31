@@ -72,7 +72,7 @@ export async function listLibrary(root = dataRoot()): Promise<LibraryRevision[]>
   try { entries = await readdir(directory, {withFileTypes: true}); } catch { return []; }
   const result: LibraryRevision[] = [];
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory() || entry.name.endsWith('.lock')) continue;
     const metadata = await readJson(join(directory, entry.name, 'metadata.json'), skillMetadataSchema);
     for (const revision of metadata.revisions) result.push({metadata, revision, contentPath: join(directory, entry.name, 'revisions', revisionDirectoryName(revision.hash), 'content')});
   }
