@@ -1,10 +1,11 @@
 import {afterEach, describe, expect, test} from 'bun:test';
-import {mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile} from 'node:fs/promises';
+import {mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import lockfile from 'proper-lockfile';
 import {addManyToDeck, addToDeck, createDeck} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
-import {hashDirectory} from '../src/core/hashing.js';
+import {hashDirectory, revisionDirectoryName} from '../src/core/hashing.js';
 import {importSkills, listLibrary} from '../src/core/library.js';
 import {planDeck, readProjectLock} from '../src/core/planner.js';
 import {applyPlan, planRemoveDeck, removeDeckFromProject} from '../src/core/project.js';
@@ -47,6 +48,53 @@ describe('Library, Deck, and project lifecycle', () => {
     await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);
     expect((await listLibrary(value.data))).toHaveLength(2);
     expect(await readFile(join(first!.contentPath, 'SKILL.md'), 'utf8')).toBe('# Demo\n');
+  });
+
+  test('reclaims an abandoned temporary directory before importing', async () => {
+    const value = await fixture();
+    const [first] = await importSkills(value.checkout, value.discovered, value.data);
+    await writeFile(join(value.skill, 'SKILL.md'), '# Demo v2\n');
+    const hash = await hashDirectory(value.skill);
+    const temporary = join(first!.contentPath, '..', '..', revisionDirectoryName(hash), 'content.tmp');
+    await mkdir(temporary, {recursive: true});
+    await writeFile(join(temporary, 'partial'), 'incomplete');
+
+    const [second] = await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);
+
+    expect(await readFile(join(second!.contentPath, 'SKILL.md'), 'utf8')).toBe('# Demo v2\n');
+    expect(await readdir(join(second!.contentPath, '..'))).not.toContain('content.tmp');
+  });
+
+  test('serializes concurrent imports without losing revisions or racing temporary directories', async () => {
+    const value = await fixture();
+    const alternate = join(value.repository, 'alternate');
+    await mkdir(alternate);
+    await writeFile(join(alternate, 'SKILL.md'), '# Demo v2\n');
+    const alternateCheckout = {...value.checkout, commit: 'abcdef1234567890'};
+    const alternateDiscovered = [{...value.discovered[0]!, absolutePath: alternate}];
+    const imports = await Promise.all(Array.from({length: 8}, (_, index) => index % 2 === 0
+      ? importSkills(value.checkout, value.discovered, value.data)
+      : importSkills(alternateCheckout, alternateDiscovered, value.data)));
+    const revisions = imports.map(([revision]) => revision!);
+
+    expect(new Set(revisions.map(revision => revision.revision.hash)).size).toBe(2);
+    expect((await listLibrary(value.data)).map(revision => revision.revision.hash).sort()).toEqual([...new Set(revisions.map(revision => revision.revision.hash))].sort());
+    for (const revision of revisions) {
+      expect((await readdir(join(revision.contentPath, '..'))).filter(entry => entry.endsWith('.tmp'))).toEqual([]);
+    }
+  });
+
+  test('lists the library while an import lock is held', async () => {
+    const value = await fixture();
+    await importSkills(value.checkout, value.discovered, value.data);
+    const skillsDirectory = join(value.data, 'skills');
+    const [storageDirectory] = await readdir(skillsDirectory);
+    const release = await lockfile.lock(join(skillsDirectory, storageDirectory!));
+    try {
+      expect(await listLibrary(value.data)).toHaveLength(1);
+    } finally {
+      await release();
+    }
   });
 
   test('applies shared ownership and refuses to remove modified content', async () => {
