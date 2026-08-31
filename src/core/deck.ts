@@ -13,7 +13,11 @@ async function readDeck(id: string, root: string): Promise<Deck> {
 
 export async function listDecks(root = dataRoot()): Promise<Deck[]> {
   let entries;
-  try { entries = await readdir(join(root, 'decks'), {withFileTypes: true}); } catch { return []; }
+  try { entries = await readdir(join(root, 'decks'), {withFileTypes: true}); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
   const decks: Deck[] = [];
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith('.json')) continue;

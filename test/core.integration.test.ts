@@ -119,6 +119,15 @@ describe('Library, Deck, and project lifecycle', () => {
     expect(await readFile(join(value.project, '.agents', 'skills', 'demo', 'SKILL.md'), 'utf8')).toBe('# Demo\n');
   });
 
+  test('fails closed when the Deck catalog cannot be enumerated', async () => {
+    const value = await fixture();
+    const [revision] = await importSkills(value.checkout, value.discovered, value.data);
+    await writeFile(join(value.data, 'decks'), 'not a directory');
+
+    await expect(removeLibrarySkills([revision!], value.data)).rejects.toThrow();
+    expect(await listLibrary(value.data)).toHaveLength(1);
+  });
+
   test('serializes Deck writes with Skill uninstall', async () => {
     const value = await fixture();
     const [revision] = await importSkills(value.checkout, value.discovered, value.data);
