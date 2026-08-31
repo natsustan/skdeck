@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import lockfile from 'proper-lockfile';
 import {addManyToDeck, addToDeck, createDeck} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
-import {hashDirectory} from '../src/core/hashing.js';
+import {hashDirectory, revisionDirectoryName} from '../src/core/hashing.js';
 import {importSkills, listLibrary} from '../src/core/library.js';
 import {planDeck, readProjectLock} from '../src/core/planner.js';
 import {applyPlan, planRemoveDeck, removeDeckFromProject} from '../src/core/project.js';
@@ -48,6 +48,21 @@ describe('Library, Deck, and project lifecycle', () => {
     await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);
     expect((await listLibrary(value.data))).toHaveLength(2);
     expect(await readFile(join(first!.contentPath, 'SKILL.md'), 'utf8')).toBe('# Demo\n');
+  });
+
+  test('reclaims an abandoned temporary directory before importing', async () => {
+    const value = await fixture();
+    const [first] = await importSkills(value.checkout, value.discovered, value.data);
+    await writeFile(join(value.skill, 'SKILL.md'), '# Demo v2\n');
+    const hash = await hashDirectory(value.skill);
+    const temporary = join(first!.contentPath, '..', '..', revisionDirectoryName(hash), 'content.tmp');
+    await mkdir(temporary, {recursive: true});
+    await writeFile(join(temporary, 'partial'), 'incomplete');
+
+    const [second] = await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);
+
+    expect(await readFile(join(second!.contentPath, 'SKILL.md'), 'utf8')).toBe('# Demo v2\n');
+    expect(await readdir(join(second!.contentPath, '..'))).not.toContain('content.tmp');
   });
 
   test('serializes concurrent imports without losing revisions or racing temporary directories', async () => {

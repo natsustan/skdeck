@@ -1,4 +1,4 @@
-import {createHash, randomUUID} from 'node:crypto';
+import {createHash} from 'node:crypto';
 import {access, mkdir, readdir, rename, rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import lockfile from 'proper-lockfile';
@@ -31,35 +31,35 @@ export async function importSkills(checkout: Checkout, skills: DiscoveredSkill[]
     const metadataPath = join(base, 'metadata.json');
     const hash = await hashDirectory(skill.absolutePath);
     const fallback: SkillMetadata = {schemaVersion: 1, id, name: skill.name, sourceUrl: checkout.sourceUrl, repository: `${checkout.owner}/${checkout.repository}`, path: skill.path, revisions: []};
-    let metadata = await readMetadata(metadataPath, fallback);
-    let revision = metadata.revisions.find(item => item.hash === hash);
+    await mkdir(base, {recursive: true});
+    const release = await lockfile.lock(base, {retries: {forever: true, minTimeout: 10, maxTimeout: 100}});
+    let metadata: SkillMetadata;
+    let revision: SkillMetadata['revisions'][number];
     const contentPath = join(base, 'revisions', revisionDirectoryName(hash), 'content');
-    if (!revision) {
-      const temporary = `${contentPath}.${randomUUID()}.tmp`;
-      try {
-        await copyDirectory(skill.absolutePath, temporary);
-        await mkdir(base, {recursive: true});
-        const release = await lockfile.lock(base, {retries: {retries: 100, minTimeout: 10, maxTimeout: 100}});
+    try {
+      metadata = await readMetadata(metadataPath, fallback);
+      const existing = metadata.revisions.find(item => item.hash === hash);
+      if (existing) revision = existing;
+      else {
+        revision = {hash, commit: checkout.commit, importedAt: new Date().toISOString()};
+        const temporary = `${contentPath}.tmp`;
+        await rm(temporary, {recursive: true, force: true});
         try {
-          metadata = await readMetadata(metadataPath, fallback);
-          revision = metadata.revisions.find(item => item.hash === hash);
-          if (!revision) {
-            revision = {hash, commit: checkout.commit, importedAt: new Date().toISOString()};
-            await mkdir(join(contentPath, '..'), {recursive: true});
-            try { await rename(temporary, contentPath); }
-            catch (error) {
-              try { await access(contentPath); }
-              catch { throw error; }
-            }
-            metadata.revisions.push(revision);
-            await atomicWriteJson(metadataPath, metadata);
+          await copyDirectory(skill.absolutePath, temporary);
+          await mkdir(join(contentPath, '..'), {recursive: true});
+          try { await rename(temporary, contentPath); }
+          catch (error) {
+            try { await access(contentPath); }
+            catch { throw error; }
           }
         } finally {
-          await release();
+          await rm(temporary, {recursive: true, force: true});
         }
-      } finally {
-        await rm(temporary, {recursive: true, force: true});
+        metadata.revisions.push(revision);
+        await atomicWriteJson(metadataPath, metadata);
       }
+    } finally {
+      await release();
     }
     imported.push({metadata, revision, contentPath});
   }
