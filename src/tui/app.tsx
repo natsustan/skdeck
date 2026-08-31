@@ -4,7 +4,7 @@ import {addManyToDeck, createDeck, deleteDeck, listDecks, removeFromDeck, rename
 import {checkoutGitHub, type Checkout} from '../core/github/checkout.js';
 import {discoverSkills, type DiscoveredSkill} from '../core/github/discover.js';
 import {dataRoot as defaultDataRoot} from '../core/filesystem.js';
-import {importSkills, latestLibrarySkills, listLibraryRevisions, removeLibrarySkills, type LibraryRevision} from '../core/library.js';
+import {importSkills, latestLibrarySkills, listLibraryRevisions, removeLibrarySkills, type LibraryRevision, type LibrarySort} from '../core/library.js';
 import {planDeck, readProjectLock, type ApplyPlan} from '../core/planner.js';
 import {applyPlan, planRemoveDeck, removeDeckFromProject, type RemovePlan} from '../core/project.js';
 import type {Deck, ProjectLock} from '../core/schemas.js';
@@ -37,6 +37,7 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
   const [deckCursor, setDeckCursor] = useState(0);
   const [projectCursor, setProjectCursor] = useState(0);
   const [libraryCursor, setLibraryCursor] = useState(0);
+  const [librarySort, setLibrarySort] = useState<LibrarySort>('recent');
   const [selectedLibrary, setSelectedLibrary] = useState<Set<string>>(new Set());
   const [libraryTargetDeckId, setLibraryTargetDeckId] = useState<string>();
   const [deckSkillCursor, setDeckSkillCursor] = useState(0);
@@ -77,7 +78,7 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
       });
   }, [refresh]);
   const projectDecks = [...decks, ...(lock?.decks.filter(installed => !decks.some(deck => deck.id === installed.id)).map(installed => ({schemaVersion: 1 as const, ...installed, skills: []})) ?? [])];
-  const librarySkills = latestLibrarySkills(library);
+  const librarySkills = latestLibrarySkills(library, librarySort);
   const selectedDeck = decks[deckCursor];
   const selectedDeckSkills = selectedDeck?.skills.map(ref => library.find(item => item.metadata.id === ref.skillId && item.revision.hash === ref.revision)).filter((item): item is LibraryRevision => item !== undefined) ?? [];
   const selectedLibraryItems = librarySkills.filter(item => selectedLibrary.has(libraryKey(item)));
@@ -197,6 +198,7 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
     if (page === 1) {
       if (key.upArrow) setLibraryCursor(value => Math.max(0, value - 1));
       if (key.downArrow) setLibraryCursor(value => Math.min(librarySkills.length - 1, value + 1));
+      if (character === 's') { setLibrarySort(value => value === 'recent' ? 'name' : 'recent'); setLibraryCursor(0); }
       if (character === ' ' && librarySkills[libraryCursor]) setSelectedLibrary(value => {
         const next = new Set(value); const id = libraryKey(librarySkills[libraryCursor]!); next.has(id) ? next.delete(id) : next.add(id); return next;
       });
@@ -240,7 +242,7 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
     <Box justifyContent="space-between"><Text bold color="cyan">SKDECK</Text><Navigation active={page}/><Text dimColor>q quit</Text></Box>
     <Box borderStyle="single" borderColor="gray" paddingX={1} minHeight={12} flexDirection="column">
       {page === 0 && <DiscoverScreen skills={discovery?.skills ?? []} cursor={cursor} selected={discovery?.selected ?? new Set()}/>}
-      {page === 1 && <LibraryScreen library={librarySkills} cursor={libraryCursor} selected={selectedLibrary} targetDeck={libraryTargetDeck?.name}/>}
+      {page === 1 && <LibraryScreen library={librarySkills} cursor={libraryCursor} selected={selectedLibrary} targetDeck={libraryTargetDeck?.name} sort={librarySort}/>}
       {page === 2 && <DecksScreen decks={decks} deckCursor={deckCursor} skills={selectedDeckSkills} skillCursor={deckSkillCursor} focus={focus}/>}
       {page === 3 && <ProjectScreen decks={projectDecks} cursor={projectCursor} lock={lock} projectRoot={projectRoot}/>}
     </Box>

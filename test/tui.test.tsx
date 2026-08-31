@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {cleanup, render} from 'ink-testing-library';
 import {addToDeck, createDeck, listDecks} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
-import {importSkills, listLibrary} from '../src/core/library.js';
+import {importSkills, latestLibrarySkills, listLibrary} from '../src/core/library.js';
 import type {LibraryRevision} from '../src/core/library.js';
 import {readProjectLock} from '../src/core/planner.js';
 import {App} from '../src/tui/app.js';
@@ -81,9 +81,35 @@ test('renders wide-character skill names without crashing', () => {
 });
 
 test('Library selects Skills before adding them to a Deck', () => {
-  const view = render(<LibraryScreen library={[revision]} cursor={0} selected={new Set([revision.metadata.id])} targetDeck={undefined}/>);
+  const view = render(<LibraryScreen library={[revision]} cursor={0} selected={new Set([revision.metadata.id])} targetDeck={undefined} sort="recent"/>);
   expect(view.lastFrame()).toContain('[×] demo');
+  expect(view.lastFrame()).toContain('Sort: Recently installed');
+  expect(view.lastFrame()).toContain('s change sort');
   expect(view.lastFrame()).toContain('a add to Deck · d uninstall selected');
+});
+
+test('Library defaults to recent installs and can sort by name', () => {
+  const older = revision;
+  const newerRevision = {...revision.revision, importedAt: '2026-08-31T00:00:00.000Z'};
+  const newer: LibraryRevision = {
+    ...revision,
+    metadata: {...revision.metadata, id: 'github.com/acme/skills/skills/zulu', name: 'zulu', revisions: [newerRevision]},
+    revision: newerRevision,
+  };
+
+  expect(latestLibrarySkills([older, newer]).map(item => item.metadata.name)).toEqual(['zulu', 'demo']);
+  expect(latestLibrarySkills([older, newer], 'name').map(item => item.metadata.name)).toEqual(['demo', 'zulu']);
+});
+
+test('Library keyboard toggles the sort order', async () => {
+  const value = await interactiveFixture();
+  const view = render(<App projectRoot={value.projectRoot} dataRoot={value.dataRoot}/>);
+  await waitForFrame(view, 'Ready');
+
+  view.stdin.write('2');
+  await waitForFrame(view, 'Sort: Recently installed');
+  view.stdin.write('s');
+  await waitForFrame(view, 'Sort: Name');
 });
 
 test('Decks shows the selected Deck contents instead of the whole Library', () => {

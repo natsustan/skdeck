@@ -9,6 +9,7 @@ import type {Checkout} from './github/checkout.js';
 import type {DiscoveredSkill} from './github/discover.js';
 
 export interface LibraryRevision { metadata: SkillMetadata; revision: SkillMetadata['revisions'][number]; contentPath: string }
+export type LibrarySort = 'recent' | 'name';
 
 function storageKey(skillId: string): string { return createHash('sha256').update(skillId).digest('hex'); }
 export function skillId(checkout: Checkout, path: string): string { return `github.com/${checkout.owner}/${checkout.repository}/${path}`.replace(/\/$/, ''); }
@@ -86,8 +87,11 @@ export async function listLibraryRevisions(root = dataRoot()): Promise<LibraryRe
   return result.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name) || b.revision.importedAt.localeCompare(a.revision.importedAt));
 }
 
-export function latestLibrarySkills(revisions: LibraryRevision[]): LibraryRevision[] {
-  return revisions.filter(item => item.metadata.revisions.at(-1)?.hash === item.revision.hash);
+export function latestLibrarySkills(revisions: LibraryRevision[], sort: LibrarySort = 'recent'): LibraryRevision[] {
+  const latest = revisions.filter(item => item.metadata.revisions.at(-1)?.hash === item.revision.hash);
+  return latest.sort((a, b) => sort === 'recent'
+    ? b.revision.importedAt.localeCompare(a.revision.importedAt) || a.metadata.name.localeCompare(b.metadata.name)
+    : a.metadata.name.localeCompare(b.metadata.name));
 }
 
 export async function listLibrary(root = dataRoot()): Promise<LibraryRevision[]> {
