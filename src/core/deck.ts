@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {readdir, rm} from 'node:fs/promises';
 import {join} from 'node:path';
-import {atomicWriteJson, dataRoot, readJson} from './filesystem.js';
+import {atomicWriteJson, dataRoot, readJson, withCatalogLock} from './filesystem.js';
 import {deckSchema, type Deck} from './schemas.js';
 import type {LibraryRevision} from './library.js';
 
@@ -15,20 +15,21 @@ export async function listDecks(root = dataRoot()): Promise<Deck[]> {
 }
 
 export async function saveDeck(deck: Deck, root = dataRoot()): Promise<Deck> {
-  const valid = deckSchema.parse(deck);
-  if ((await listDecks(root)).some(existing => existing.id !== valid.id && existing.name === valid.name)) throw new Error(`A deck named "${valid.name}" already exists.`);
-  const duplicateNames = new Set<string>();
-  const revisions = await Promise.all(valid.skills.map(async ref => (await import('./library.js')).findLibraryRevision(ref.skillId, ref.revision, root)));
-  for (const item of revisions) {
-    if (duplicateNames.has(item.metadata.name)) throw new Error(`Deck contains duplicate target name: ${item.metadata.name}`);
-    duplicateNames.add(item.metadata.name);
-  }
-  await atomicWriteJson(deckPath(root, valid.id), valid);
-  return valid;
+  return withCatalogLock(root, async () => {
+    const valid = deckSchema.parse(deck);
+    if ((await listDecks(root)).some(existing => existing.id !== valid.id && existing.name === valid.name)) throw new Error(`A deck named "${valid.name}" already exists.`);
+    const duplicateNames = new Set<string>();
+    const revisions = await Promise.all(valid.skills.map(async ref => (await import('./library.js')).findLibraryRevision(ref.skillId, ref.revision, root)));
+    for (const item of revisions) {
+      if (duplicateNames.has(item.metadata.name)) throw new Error(`Deck contains duplicate target name: ${item.metadata.name}`);
+      duplicateNames.add(item.metadata.name);
+    }
+    await atomicWriteJson(deckPath(root, valid.id), valid);
+    return valid;
+  });
 }
 
 export async function createDeck(name: string, root = dataRoot()): Promise<Deck> {
-  if ((await listDecks(root)).some(deck => deck.name === name.trim())) throw new Error(`A deck named "${name.trim()}" already exists.`);
   return saveDeck({schemaVersion: 1, id: randomUUID(), name: name.trim(), skills: []}, root);
 }
 
@@ -50,4 +51,6 @@ export async function removeFromDeck(deck: Deck, skillIdValue: string, root = da
   return saveDeck({...deck, skills: deck.skills.filter(ref => ref.skillId !== skillIdValue)}, root);
 }
 
-export async function deleteDeck(deck: Deck, root = dataRoot()): Promise<void> { await rm(deckPath(root, deck.id)); }
+export async function deleteDeck(deck: Deck, root = dataRoot()): Promise<void> {
+  await withCatalogLock(root, async () => rm(deckPath(root, deck.id)));
+}

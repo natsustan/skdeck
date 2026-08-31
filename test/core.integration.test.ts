@@ -3,10 +3,10 @@ import {mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile} from 'n
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import lockfile from 'proper-lockfile';
-import {addManyToDeck, addToDeck, createDeck} from '../src/core/deck.js';
+import {addManyToDeck, addToDeck, createDeck, deleteDeck} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
 import {hashDirectory, revisionDirectoryName} from '../src/core/hashing.js';
-import {importSkills, listLibrary} from '../src/core/library.js';
+import {importSkills, listLibrary, listLibraryRevisions, removeLibrarySkills} from '../src/core/library.js';
 import {planDeck, readProjectLock} from '../src/core/planner.js';
 import {applyPlan, planRemoveDeck, removeDeckFromProject} from '../src/core/project.js';
 
@@ -46,7 +46,8 @@ describe('Library, Deck, and project lifecycle', () => {
 
     await writeFile(join(value.skill, 'SKILL.md'), '# Demo v2\n');
     await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);
-    expect((await listLibrary(value.data))).toHaveLength(2);
+    expect((await listLibrary(value.data)).map(item => item.revision.commit)).toEqual(['abcdef1234567890']);
+    expect(await listLibraryRevisions(value.data)).toHaveLength(2);
     expect(await readFile(join(first!.contentPath, 'SKILL.md'), 'utf8')).toBe('# Demo\n');
   });
 
@@ -78,7 +79,7 @@ describe('Library, Deck, and project lifecycle', () => {
     const revisions = imports.map(([revision]) => revision!);
 
     expect(new Set(revisions.map(revision => revision.revision.hash)).size).toBe(2);
-    expect((await listLibrary(value.data)).map(revision => revision.revision.hash).sort()).toEqual([...new Set(revisions.map(revision => revision.revision.hash))].sort());
+    expect((await listLibraryRevisions(value.data)).map(revision => revision.revision.hash).sort()).toEqual([...new Set(revisions.map(revision => revision.revision.hash))].sort());
     for (const revision of revisions) {
       expect((await readdir(join(revision.contentPath, '..'))).filter(entry => entry.endsWith('.tmp'))).toEqual([]);
     }
@@ -95,6 +96,43 @@ describe('Library, Deck, and project lifecycle', () => {
     } finally {
       await release();
     }
+  });
+
+  test('uninstalls a whole Skill and protects every revision referenced by a Deck', async () => {
+    const value = await fixture();
+    const [first] = await importSkills(value.checkout, value.discovered, value.data);
+    let deck = await createDeck('protected', value.data);
+    deck = await addToDeck(deck, first!, value.data);
+    await applyPlan(await planDeck(deck, value.project, value.data));
+    await writeFile(join(value.skill, 'SKILL.md'), '# Demo v2\n');
+    const [latest] = await importSkills({...value.checkout, commit: 'abcdef1234567890'}, value.discovered, value.data);
+
+    await expect(removeLibrarySkills([latest!], value.data)).rejects.toThrow('used by Deck "protected"');
+    expect(await listLibrary(value.data)).toHaveLength(1);
+    expect(await listLibraryRevisions(value.data)).toHaveLength(2);
+
+    await deleteDeck(deck, value.data);
+    await removeLibrarySkills([latest!], value.data);
+    expect(await listLibrary(value.data)).toEqual([]);
+    expect(await listLibraryRevisions(value.data)).toEqual([]);
+    expect((await readProjectLock(value.project)).decks).toEqual([{id: deck.id, name: deck.name}]);
+    expect(await readFile(join(value.project, '.agents', 'skills', 'demo', 'SKILL.md'), 'utf8')).toBe('# Demo\n');
+  });
+
+  test('serializes Deck writes with Skill uninstall', async () => {
+    const value = await fixture();
+    const [revision] = await importSkills(value.checkout, value.discovered, value.data);
+    const deck = await createDeck('concurrent', value.data);
+
+    const results = await Promise.allSettled([
+      addToDeck(deck, revision!, value.data),
+      removeLibrarySkills([revision!], value.data),
+    ]);
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+
+    const [storedDeck] = await (await import('../src/core/deck.js')).listDecks(value.data);
+    const storedLibrary = await listLibrary(value.data);
+    expect(storedDeck!.skills.length === 1 && storedLibrary.length === 1 || storedDeck!.skills.length === 0 && storedLibrary.length === 0).toBe(true);
   });
 
   test('applies shared ownership and refuses to remove modified content', async () => {
@@ -152,5 +190,9 @@ describe('Library, Deck, and project lifecycle', () => {
     const value = await fixture();
     await symlink('../SKILL.md', join(value.skill, 'linked'));
     await expect(hashDirectory(value.skill)).rejects.toThrow('symbolic link');
+  });
+
+  test('rejects content hashes that could escape revision storage', () => {
+    expect(() => revisionDirectoryName('sha256:../../../decks')).toThrow('Invalid content hash');
   });
 });

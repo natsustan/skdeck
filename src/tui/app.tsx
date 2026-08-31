@@ -4,7 +4,7 @@ import {addManyToDeck, createDeck, deleteDeck, listDecks, removeFromDeck, saveDe
 import {checkoutGitHub, type Checkout} from '../core/github/checkout.js';
 import {discoverSkills, type DiscoveredSkill} from '../core/github/discover.js';
 import {dataRoot as defaultDataRoot} from '../core/filesystem.js';
-import {importSkills, listLibrary, type LibraryRevision} from '../core/library.js';
+import {importSkills, latestLibrarySkills, listLibraryRevisions, removeLibrarySkills, type LibraryRevision} from '../core/library.js';
 import {planDeck, readProjectLock, type ApplyPlan} from '../core/planner.js';
 import {applyPlan, planRemoveDeck, removeDeckFromProject, type RemovePlan} from '../core/project.js';
 import type {Deck, ProjectLock} from '../core/schemas.js';
@@ -20,7 +20,7 @@ import type {InputMode, Page} from './state.js';
 
 interface Discovery {checkout: Checkout; skills: DiscoveredSkill[]; selected: Set<string>}
 type ProjectPlan = {kind: 'apply'; value: ApplyPlan} | {kind: 'remove'; value: RemovePlan};
-const libraryKey = (item: LibraryRevision) => `${item.metadata.id}:${item.revision.hash}`;
+const libraryKey = (item: LibraryRevision) => item.metadata.id;
 const skillCount = (count: number) => `${count} Skill${count === 1 ? '' : 's'}`;
 
 export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}: {projectRoot?: string; dataRoot?: string}) {
@@ -49,7 +49,7 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
   const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
-    const [nextLibrary, nextDecks, nextLock] = await Promise.all([listLibrary(dataRoot), listDecks(dataRoot), readProjectLock(projectRoot)]);
+    const [nextLibrary, nextDecks, nextLock] = await Promise.all([listLibraryRevisions(dataRoot), listDecks(dataRoot), readProjectLock(projectRoot)]);
     setLibrary(nextLibrary); setDecks(nextDecks); setLock(nextLock);
   }, [dataRoot, projectRoot]);
 
@@ -77,9 +77,10 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
       });
   }, [refresh]);
   const projectDecks = [...decks, ...(lock?.decks.filter(installed => !decks.some(deck => deck.id === installed.id)).map(installed => ({schemaVersion: 1 as const, ...installed, skills: []})) ?? [])];
+  const librarySkills = latestLibrarySkills(library);
   const selectedDeck = decks[deckCursor];
   const selectedDeckSkills = selectedDeck?.skills.map(ref => library.find(item => item.metadata.id === ref.skillId && item.revision.hash === ref.revision)).filter((item): item is LibraryRevision => item !== undefined) ?? [];
-  const selectedLibraryItems = library.filter(item => selectedLibrary.has(libraryKey(item)));
+  const selectedLibraryItems = librarySkills.filter(item => selectedLibrary.has(libraryKey(item)));
   const libraryTargetDeck = decks.find(deck => deck.id === libraryTargetDeckId);
 
   useInput((character, key) => {
@@ -87,11 +88,22 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
     if (busyRef.current) return;
     if (inputMode) {
       if (key.escape) { setInputMode(undefined); return; }
-      if (inputMode.kind === 'deleteDeck') {
+      if (inputMode.kind === 'deleteDeck' || inputMode.kind === 'uninstallLibrary') {
         if (character.toLowerCase() === 'y') {
-          const deck = decks[deckCursor];
+          const mode = inputMode.kind;
           setInputMode(undefined);
-          if (deck) run('Deleting Deck…', async () => { await deleteDeck(deck, dataRoot); setStatus(`Deleted ${deck.name}`); });
+          if (mode === 'deleteDeck') {
+            const deck = decks[deckCursor];
+            if (deck) run('Deleting Deck…', async () => { await deleteDeck(deck, dataRoot); setStatus(`Deleted ${deck.name}`); });
+          } else {
+            const count = selectedLibraryItems.length;
+            run('Uninstalling Skills…', async () => {
+              await removeLibrarySkills(selectedLibraryItems, dataRoot);
+              setSelectedLibrary(new Set());
+              setLibraryCursor(0);
+              setStatus(`Uninstalled ${skillCount(count)}`);
+            });
+          }
         } else if (character.toLowerCase() === 'n') setInputMode(undefined);
         return;
       }
@@ -185,13 +197,16 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
     if (page === 0 && character === 'i') setInputMode({kind: 'url', value: ''});
     if (page === 1) {
       if (key.upArrow) setLibraryCursor(value => Math.max(0, value - 1));
-      if (key.downArrow) setLibraryCursor(value => Math.min(library.length - 1, value + 1));
-      if (character === ' ' && library[libraryCursor]) setSelectedLibrary(value => {
-        const next = new Set(value); const id = libraryKey(library[libraryCursor]!); next.has(id) ? next.delete(id) : next.add(id); return next;
+      if (key.downArrow) setLibraryCursor(value => Math.min(librarySkills.length - 1, value + 1));
+      if (character === ' ' && librarySkills[libraryCursor]) setSelectedLibrary(value => {
+        const next = new Set(value); const id = libraryKey(librarySkills[libraryCursor]!); next.has(id) ? next.delete(id) : next.add(id); return next;
       });
-      if (character === 'd' && selectedLibraryItems.length > 0) {
+      if (character === 'a' && !libraryTargetDeckId && selectedLibraryItems.length > 0) {
         if (decks.length === 0) setInputMode({kind: 'newDeck', value: '', addSelected: true});
         else { setDeckPickerCursor(0); setDeckPicker(true); }
+      }
+      if (character === 'd' && !libraryTargetDeckId && selectedLibraryItems.length > 0) {
+        setInputMode({kind: 'uninstallLibrary', value: String(selectedLibraryItems.length)});
       }
       if (key.return && libraryTargetDeck && selectedLibraryItems.length > 0) run('Adding Skills…', async () => {
         await addManyToDeck(libraryTargetDeck, selectedLibraryItems, dataRoot); setSelectedLibrary(new Set()); setLibraryTargetDeckId(undefined); setPage(2); setFocus('skills'); setDeckSkillCursor(0); setStatus(`Added ${skillCount(selectedLibraryItems.length)} to ${libraryTargetDeck.name}`);
@@ -226,13 +241,17 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
     <Box justifyContent="space-between"><Text bold color="cyan">SKDECK</Text><Navigation active={page}/><Text dimColor>q quit</Text></Box>
     <Box borderStyle="single" borderColor="gray" paddingX={1} minHeight={12} flexDirection="column">
       {page === 0 && <DiscoverScreen skills={discovery?.skills ?? []} cursor={cursor} selected={discovery?.selected ?? new Set()}/>}
-      {page === 1 && <LibraryScreen library={library} cursor={libraryCursor} selected={selectedLibrary} targetDeck={libraryTargetDeck?.name}/>}
+      {page === 1 && <LibraryScreen library={librarySkills} cursor={libraryCursor} selected={selectedLibrary} targetDeck={libraryTargetDeck?.name}/>}
       {page === 2 && <DecksScreen decks={decks} deckCursor={deckCursor} skills={selectedDeckSkills} skillCursor={deckSkillCursor} focus={focus}/>}
       {page === 3 && <ProjectScreen decks={projectDecks} cursor={projectCursor} lock={lock} projectRoot={projectRoot}/>}
     </Box>
     {deckPicker && <DeckPicker decks={decks} cursor={deckPickerCursor} count={selectedLibraryItems.length}/>}
     {projectPlan && <PlanModal kind={projectPlan.kind} deckName={projectPlan.value.deck.name} items={projectPlan.value.items}/>}
-    {inputMode && <Modal title={inputMode.kind === 'url' ? 'GitHub URL' : inputMode.kind === 'newDeck' ? 'New Deck name' : inputMode.kind === 'renameDeck' ? 'Rename Deck' : `Delete local Deck "${inputMode.value}"?`} value={inputMode.kind === 'deleteDeck' ? '' : inputMode.value} hint={inputMode.kind === 'deleteDeck' ? 'Installed project content is unchanged · y delete · n/Esc cancel' : undefined}/>}
+    {inputMode && <Modal
+      title={inputMode.kind === 'url' ? 'GitHub URL' : inputMode.kind === 'newDeck' ? 'New Deck name' : inputMode.kind === 'renameDeck' ? 'Rename Deck' : inputMode.kind === 'deleteDeck' ? `Delete local Deck "${inputMode.value}"?` : `Uninstall ${skillCount(Number(inputMode.value))}?`}
+      value={inputMode.kind === 'deleteDeck' || inputMode.kind === 'uninstallLibrary' ? '' : inputMode.value}
+      hint={inputMode.kind === 'deleteDeck' ? 'Installed project content is unchanged · y delete · n/Esc cancel' : inputMode.kind === 'uninstallLibrary' ? 'Removes local Library data · y uninstall · n/Esc cancel' : undefined}
+    />}
     <Text color={status.toLowerCase().includes('error') || status.toLowerCase().includes('cannot') ? 'red' : busy ? 'yellow' : 'green'}>{busy ? '◌ ' : '● '}{status}</Text>
   </Box>;
 }

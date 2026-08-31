@@ -7,7 +7,7 @@ export function SkillList({items, selected = -1, checked}: {items: LibraryRevisi
   return <Box flexDirection="column">{items.map((item, index) => {
     const key = `${item.metadata.id}:${item.revision.hash}`;
     return <Text key={key} color={index === selected ? 'cyan' : 'white'}>
-      {index === selected ? '› ' : '  '}{checked ? `[${checked.has(key) ? '×' : ' '}] ` : ''}{item.metadata.name} <Text dimColor>{item.metadata.repository}@{item.revision.commit.slice(0, 7)}</Text>
+      {index === selected ? '› ' : '  '}{checked ? `[${checked.has(item.metadata.id) ? '×' : ' '}] ` : ''}{item.metadata.name} <Text dimColor>{item.metadata.repository}@{item.revision.commit.slice(0, 7)}</Text>
     </Text>;
   })}</Box>;
 }

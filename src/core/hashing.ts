@@ -48,5 +48,6 @@ export async function copyDirectory(source: string, destination: string): Promis
 }
 
 export function revisionDirectoryName(hash: string): string {
-  return hash.replace('sha256:', '');
+  if (!/^sha256:[0-9a-f]{64}$/.test(hash)) throw new Error(`Invalid content hash: ${hash}`);
+  return hash.slice('sha256:'.length);
 }

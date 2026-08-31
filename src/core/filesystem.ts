@@ -2,6 +2,7 @@ import {mkdir, readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {dirname, join} from 'node:path';
 import {homedir} from 'node:os';
 import {randomUUID} from 'node:crypto';
+import lockfile from 'proper-lockfile';
 import type {ZodType} from 'zod';
 
 export function dataRoot(env: NodeJS.ProcessEnv = process.env): string {
@@ -29,4 +30,11 @@ export async function atomicWriteJson(path: string, value: unknown): Promise<voi
     await rm(temporary, {force: true});
     throw error;
   }
+}
+
+export async function withCatalogLock<T>(root: string, operation: () => Promise<T>): Promise<T> {
+  await mkdir(root, {recursive: true});
+  const release = await lockfile.lock(root, {retries: {forever: true, minTimeout: 10, maxTimeout: 100}});
+  try { return await operation(); }
+  finally { await release(); }
 }

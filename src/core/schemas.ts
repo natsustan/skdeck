@@ -1,8 +1,10 @@
 import {z} from 'zod';
 
+const contentHashSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+
 export const revisionRefSchema = z.object({
   skillId: z.string().min(1),
-  revision: z.string().startsWith('sha256:'),
+  revision: contentHashSchema,
 });
 
 export const deckSchema = z.object({
@@ -13,7 +15,7 @@ export const deckSchema = z.object({
 });
 
 export const skillRevisionSchema = z.object({
-  hash: z.string().startsWith('sha256:'),
+  hash: contentHashSchema,
   commit: z.string().min(7),
   importedAt: z.string().datetime(),
 });
@@ -31,8 +33,8 @@ export const skillMetadataSchema = z.object({
 export const lockSkillSchema = z.object({
   name: z.string().min(1),
   skillId: z.string().min(1),
-  revision: z.string().startsWith('sha256:'),
-  installedHash: z.string().startsWith('sha256:'),
+  revision: contentHashSchema,
+  installedHash: contentHashSchema,
   owners: z.array(z.string().uuid()).min(1),
 });
 
