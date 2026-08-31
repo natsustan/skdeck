@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Box, Text, useApp, useInput} from 'ink';
-import {addManyToDeck, createDeck, deleteDeck, listDecks, removeFromDeck, saveDeck} from '../core/deck.js';
+import {addManyToDeck, createDeck, deleteDeck, listDecks, removeFromDeck, renameDeck} from '../core/deck.js';
 import {checkoutGitHub, type Checkout} from '../core/github/checkout.js';
 import {discoverSkills, type DiscoveredSkill} from '../core/github/discover.js';
 import {dataRoot as defaultDataRoot} from '../core/filesystem.js';
@@ -129,14 +129,13 @@ export function App({projectRoot = process.cwd(), dataRoot = defaultDataRoot()}:
           }
         });
         if (mode === 'newDeck') run('Creating Deck…', async () => {
-          let deck = await createDeck(value, dataRoot);
-          if (inputMode.addSelected && selectedLibraryItems.length > 0) deck = await addManyToDeck(deck, selectedLibraryItems, dataRoot);
+          const deck = await createDeck(value, dataRoot, inputMode.addSelected ? selectedLibraryItems : []);
           setSelectedLibrary(new Set()); setDeckCursor(decks.length); setPage(2); setFocus('decks');
           setStatus(inputMode.addSelected ? `Created ${deck.name} with ${skillCount(selectedLibraryItems.length)}` : `Created ${deck.name}`);
         });
         if (mode === 'renameDeck') {
           const deck = decks[deckCursor];
-          if (deck) run('Renaming Deck…', async () => { await saveDeck({...deck, name: value}, dataRoot); setStatus(`Renamed to ${value}`); });
+          if (deck) run('Renaming Deck…', async () => { await renameDeck(deck, value, dataRoot); setStatus(`Renamed to ${value}`); });
         }
         return;
       }

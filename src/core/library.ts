@@ -75,7 +75,12 @@ export async function listLibraryRevisions(root = dataRoot()): Promise<LibraryRe
   const result: LibraryRevision[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.endsWith('.lock')) continue;
-    const metadata = await readJson(join(directory, entry.name, 'metadata.json'), skillMetadataSchema);
+    let metadata: SkillMetadata;
+    try { metadata = await readJson(join(directory, entry.name, 'metadata.json'), skillMetadataSchema); }
+    catch (error) {
+      if (error instanceof Error && (error.cause as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') continue;
+      throw error;
+    }
     for (const revision of metadata.revisions) result.push({metadata, revision, contentPath: join(directory, entry.name, 'revisions', revisionDirectoryName(revision.hash), 'content')});
   }
   return result.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name) || b.revision.importedAt.localeCompare(a.revision.importedAt));

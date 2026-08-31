@@ -3,7 +3,7 @@ import {mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile} from 'n
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import lockfile from 'proper-lockfile';
-import {addManyToDeck, addToDeck, createDeck, deleteDeck} from '../src/core/deck.js';
+import {addManyToDeck, addToDeck, createDeck, deleteDeck, listDecks, renameDeck} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
 import {hashDirectory, revisionDirectoryName} from '../src/core/hashing.js';
 import {importSkills, listLibrary, listLibraryRevisions, removeLibrarySkills} from '../src/core/library.js';
@@ -133,6 +133,51 @@ describe('Library, Deck, and project lifecycle', () => {
     const [storedDeck] = await (await import('../src/core/deck.js')).listDecks(value.data);
     const storedLibrary = await listLibrary(value.data);
     expect(storedDeck!.skills.length === 1 && storedLibrary.length === 1 || storedDeck!.skills.length === 0 && storedLibrary.length === 0).toBe(true);
+  });
+
+  test('creates a Deck with Skills atomically against uninstall', async () => {
+    const value = await fixture();
+    const [revision] = await importSkills(value.checkout, value.discovered, value.data);
+
+    const results = await Promise.allSettled([
+      createDeck('atomic', value.data, [revision!]),
+      removeLibrarySkills([revision!], value.data),
+    ]);
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+
+    const decks = await listDecks(value.data);
+    const library = await listLibrary(value.data);
+    expect(decks.length === 1 && decks[0]!.skills.length === 1 && library.length === 1 || decks.length === 0 && library.length === 0).toBe(true);
+  });
+
+  test('merges concurrent Deck updates from fresh stored state', async () => {
+    const value = await fixture();
+    const otherSkill = join(value.repository, 'skills', 'other');
+    await mkdir(otherSkill, {recursive: true});
+    await writeFile(join(otherSkill, 'SKILL.md'), '# Other\n');
+    const [first, second] = await importSkills(value.checkout, [
+      ...value.discovered,
+      {name: 'other', path: 'skills/other', absolutePath: otherSkill},
+    ], value.data);
+    const deck = await createDeck('concurrent updates', value.data);
+
+    await Promise.all([
+      addToDeck(deck, first!, value.data),
+      addToDeck(deck, second!, value.data),
+      renameDeck(deck, 'renamed', value.data),
+    ]);
+
+    const [stored] = await listDecks(value.data);
+    expect(stored!.name).toBe('renamed');
+    expect(stored!.skills).toHaveLength(2);
+  });
+
+  test('ignores Library entries that disappear before metadata can be read', async () => {
+    const value = await fixture();
+    const [revision] = await importSkills(value.checkout, value.discovered, value.data);
+    await mkdir(join(value.data, 'skills', 'missing-metadata'));
+
+    expect(await listLibraryRevisions(value.data)).toEqual([revision!]);
   });
 
   test('applies shared ownership and refuses to remove modified content', async () => {
