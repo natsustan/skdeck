@@ -2,6 +2,15 @@
   "name": "skdeck",
   "version": "0.1.0",
   "description": "Manage reusable Agent Skills as versioned decks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/natsustan/skdeck.git"
+  },
+  "homepage": "https://github.com/natsustan/skdeck#readme",
+  "bugs": {
+    "url": "https://github.com/natsustan/skdeck/issues"
+  },
   "type": "module",
   "bin": {
     "skdeck": "dist/cli.js"
