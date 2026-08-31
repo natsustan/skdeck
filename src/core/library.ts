@@ -1,6 +1,7 @@
-import {createHash} from 'node:crypto';
-import {access, mkdir, readdir, rm} from 'node:fs/promises';
+import {createHash, randomUUID} from 'node:crypto';
+import {access, mkdir, readdir, rename, rm} from 'node:fs/promises';
 import {join} from 'node:path';
+import lockfile from 'proper-lockfile';
 import {atomicWriteJson, dataRoot, readJson} from './filesystem.js';
 import {copyDirectory, hashDirectory, revisionDirectoryName} from './hashing.js';
 import {skillMetadataSchema, type SkillMetadata} from './schemas.js';
@@ -13,6 +14,15 @@ function storageKey(skillId: string): string { return createHash('sha256').updat
 export function skillId(checkout: Checkout, path: string): string { return `github.com/${checkout.owner}/${checkout.repository}/${path}`.replace(/\/$/, ''); }
 function skillRoot(root: string, id: string): string { return join(root, 'skills', storageKey(id)); }
 
+async function readMetadata(path: string, fallback: SkillMetadata): Promise<SkillMetadata> {
+  try { return await readJson(path, skillMetadataSchema); }
+  catch (error) {
+    try { await access(path); throw error; }
+    catch (accessError) { if (accessError === error) throw error; }
+    return fallback;
+  }
+}
+
 export async function importSkills(checkout: Checkout, skills: DiscoveredSkill[], root = dataRoot()): Promise<LibraryRevision[]> {
   const imported: LibraryRevision[] = [];
   for (const skill of skills) {
@@ -20,24 +30,36 @@ export async function importSkills(checkout: Checkout, skills: DiscoveredSkill[]
     const base = skillRoot(root, id);
     const metadataPath = join(base, 'metadata.json');
     const hash = await hashDirectory(skill.absolutePath);
-    let metadata: SkillMetadata;
-    try { metadata = await readJson(metadataPath, skillMetadataSchema); }
-    catch (error) {
-      try { await access(metadataPath); throw error; }
-      catch (accessError) { if (accessError === error) throw error; }
-      metadata = {schemaVersion: 1, id, name: skill.name, sourceUrl: checkout.sourceUrl, repository: `${checkout.owner}/${checkout.repository}`, path: skill.path, revisions: []};
-    }
+    const fallback: SkillMetadata = {schemaVersion: 1, id, name: skill.name, sourceUrl: checkout.sourceUrl, repository: `${checkout.owner}/${checkout.repository}`, path: skill.path, revisions: []};
+    let metadata = await readMetadata(metadataPath, fallback);
     let revision = metadata.revisions.find(item => item.hash === hash);
     const contentPath = join(base, 'revisions', revisionDirectoryName(hash), 'content');
     if (!revision) {
-      revision = {hash, commit: checkout.commit, importedAt: new Date().toISOString()};
-      const temporary = `${contentPath}.tmp`;
-      await rm(temporary, {recursive: true, force: true});
-      await copyDirectory(skill.absolutePath, temporary);
-      await mkdir(join(contentPath, '..'), {recursive: true});
-      await (await import('node:fs/promises')).rename(temporary, contentPath);
-      metadata.revisions.push(revision);
-      await atomicWriteJson(metadataPath, metadata);
+      const temporary = `${contentPath}.${randomUUID()}.tmp`;
+      try {
+        await copyDirectory(skill.absolutePath, temporary);
+        await mkdir(base, {recursive: true});
+        const release = await lockfile.lock(base, {retries: {retries: 100, minTimeout: 10, maxTimeout: 100}});
+        try {
+          metadata = await readMetadata(metadataPath, fallback);
+          revision = metadata.revisions.find(item => item.hash === hash);
+          if (!revision) {
+            revision = {hash, commit: checkout.commit, importedAt: new Date().toISOString()};
+            await mkdir(join(contentPath, '..'), {recursive: true});
+            try { await rename(temporary, contentPath); }
+            catch (error) {
+              try { await access(contentPath); }
+              catch { throw error; }
+            }
+            metadata.revisions.push(revision);
+            await atomicWriteJson(metadataPath, metadata);
+          }
+        } finally {
+          await release();
+        }
+      } finally {
+        await rm(temporary, {recursive: true, force: true});
+      }
     }
     imported.push({metadata, revision, contentPath});
   }
