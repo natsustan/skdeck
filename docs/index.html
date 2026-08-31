@@ -57,9 +57,9 @@
         to a project’s <code>.agents/skills</code> directory.
       </p>
       <div class="install">
-        <div class="install-tabs" role="tablist" aria-label="Install method">
-          <button type="button" role="tab" aria-selected="true" data-cmd="npx">npx</button>
-          <button type="button" role="tab" aria-selected="false" data-cmd="npm">npm</button>
+        <div class="install-tabs" role="group" aria-label="Install method">
+          <button type="button" aria-pressed="true" data-cmd="npx">npx</button>
+          <button type="button" aria-pressed="false" data-cmd="npm">npm</button>
         </div>
         <div class="install-row">
           <span class="prompt" aria-hidden="true">$</span>
@@ -78,16 +78,16 @@
           <div class="tui-bar">
             <span class="tui-brand">SKDECK</span>
             <div class="tui-tabs" role="tablist" aria-label="Preview screens">
-              <button type="button" role="tab" data-screen="screen-discover" aria-selected="false">1 Discover</button>
-              <button type="button" role="tab" data-screen="screen-library" aria-selected="false">2 Library</button>
-              <button type="button" role="tab" data-screen="screen-decks" aria-selected="true">3 Decks</button>
-              <button type="button" role="tab" data-screen="screen-project" aria-selected="false">4 Project</button>
+              <button type="button" role="tab" id="tab-discover" data-screen="screen-discover" aria-controls="screen-discover" aria-selected="false" tabindex="-1">1 Discover</button>
+              <button type="button" role="tab" id="tab-library" data-screen="screen-library" aria-controls="screen-library" aria-selected="false" tabindex="-1">2 Library</button>
+              <button type="button" role="tab" id="tab-decks" data-screen="screen-decks" aria-controls="screen-decks" aria-selected="true" tabindex="0">3 Decks</button>
+              <button type="button" role="tab" id="tab-project" data-screen="screen-project" aria-controls="screen-project" aria-selected="false" tabindex="-1">4 Project</button>
             </div>
             <span class="tui-quit">q quit</span>
           </div>
 
           <div class="tui-frame">
-            <div class="screen" id="screen-discover" hidden>
+            <div class="screen" id="screen-discover" role="tabpanel" aria-labelledby="tab-discover" hidden>
               <p class="screen-title">Import complete Skills from GitHub</p>
               <p class="dim">Space selects · Enter imports · Esc discards checkout</p>
               <ul class="list">
@@ -98,7 +98,7 @@
               </ul>
             </div>
 
-            <div class="screen" id="screen-library" hidden>
+            <div class="screen" id="screen-library" role="tabpanel" aria-labelledby="tab-library" hidden>
               <div class="pane-head">
                 <span class="screen-title">Library</span>
                 <span class="dim">Sort: Recently installed</span>
@@ -111,7 +111,7 @@
               <p class="tui-hint">Space select · s change sort · a add to Deck · d uninstall selected · Deck references stay pinned</p>
             </div>
 
-            <div class="screen" id="screen-decks">
+            <div class="screen" id="screen-decks" role="tabpanel" aria-labelledby="tab-decks">
               <p class="screen-title">Decks · reusable Skill sets</p>
               <div class="panes">
                 <div class="pane active">
@@ -133,7 +133,7 @@
               <p class="tui-hint"><span class="keys">←/→</span> focus · <span class="keys">↑/↓</span> choose · n new · r rename · a add Skills · d remove · x delete Deck</p>
             </div>
 
-            <div class="screen" id="screen-project" hidden>
+            <div class="screen" id="screen-project" role="tabpanel" aria-labelledby="tab-project" hidden>
               <p class="screen-title">Project · ./my-project</p>
               <div class="panes">
                 <div class="pane active">
@@ -183,7 +183,7 @@
 
     <section class="section wrap" id="workflow">
       <h2>Workflow</h2>
-      <p class="section-lead">Import, compose, preview, apply. The full-screen UI is the default; the commands below are the same path without the TTY.</p>
+      <p class="section-lead">Import, compose, preview, apply. The full-screen UI is the default; the named commands below follow the same path and also require a TTY.</p>
       <div class="steps">
         <article class="step">
           <span class="step-index">add</span>

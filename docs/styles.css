@@ -182,7 +182,7 @@ h1 {
   cursor: pointer;
 }
 
-.install-tabs button[aria-selected="true"] {
+.install-tabs button[aria-pressed="true"] {
   background: var(--cyan-dim);
   color: var(--cyan);
 }
