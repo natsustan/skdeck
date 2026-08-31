@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {cleanup, render} from 'ink-testing-library';
 import {addToDeck, createDeck, listDecks} from '../src/core/deck.js';
 import type {Checkout} from '../src/core/github/checkout.js';
-import {importSkills} from '../src/core/library.js';
+import {importSkills, listLibrary} from '../src/core/library.js';
 import type {LibraryRevision} from '../src/core/library.js';
 import {readProjectLock} from '../src/core/planner.js';
 import {App} from '../src/tui/app.js';
@@ -24,9 +24,9 @@ const revision: LibraryRevision = {
     sourceUrl: 'https://github.com/acme/skills/tree/main/skills/demo',
     repository: 'acme/skills',
     path: 'skills/demo',
-    revisions: [{hash: 'sha256:demo', commit: '1234567890abcdef', importedAt: '2026-08-30T00:00:00.000Z'}],
+    revisions: [{hash: `sha256:${'d'.repeat(64)}`, commit: '1234567890abcdef', importedAt: '2026-08-30T00:00:00.000Z'}],
   },
-  revision: {hash: 'sha256:demo', commit: '1234567890abcdef', importedAt: '2026-08-30T00:00:00.000Z'},
+  revision: {hash: `sha256:${'d'.repeat(64)}`, commit: '1234567890abcdef', importedAt: '2026-08-30T00:00:00.000Z'},
   contentPath: '/tmp/demo',
 };
 const deck = {schemaVersion: 1 as const, id: '9a7d9470-afab-487c-94fd-97427a3a2c0f', name: 'frontend', skills: [{skillId: revision.metadata.id, revision: revision.revision.hash}]};
@@ -81,9 +81,9 @@ test('renders wide-character skill names without crashing', () => {
 });
 
 test('Library selects Skills before adding them to a Deck', () => {
-  const view = render(<LibraryScreen library={[revision]} cursor={0} selected={new Set([`${revision.metadata.id}:${revision.revision.hash}`])} targetDeck={undefined}/>);
+  const view = render(<LibraryScreen library={[revision]} cursor={0} selected={new Set([revision.metadata.id])} targetDeck={undefined}/>);
   expect(view.lastFrame()).toContain('[×] demo');
-  expect(view.lastFrame()).toContain('d add selected to Deck');
+  expect(view.lastFrame()).toContain('a add to Deck · d uninstall selected');
 });
 
 test('Decks shows the selected Deck contents instead of the whole Library', () => {
@@ -113,7 +113,7 @@ test('Library keyboard flow adds selected Skills to an existing Deck', async () 
   await waitForFrame(view, 'demo');
   view.stdin.write(' ');
   await waitForFrame(view, '[×] demo');
-  view.stdin.write('d');
+  view.stdin.write('a');
   await waitForFrame(view, 'Add 1 Skill to Deck');
   view.stdin.write('\r');
   await waitForFrame(view, '● Added 1 Skill to frontend');
@@ -132,7 +132,7 @@ test('Library keyboard flow creates a Deck with selected Skills', async () => {
   await waitForFrame(view, 'demo');
   view.stdin.write(' ');
   await waitForFrame(view, '[×] demo');
-  view.stdin.write('d');
+  view.stdin.write('a');
   await waitForFrame(view, 'New Deck name');
   view.stdin.write('starter');
   await waitForFrame(view, 'starter');
@@ -142,6 +142,23 @@ test('Library keyboard flow creates a Deck with selected Skills', async () => {
   const [created] = await listDecks(value.dataRoot);
   expect(created!.name).toBe('starter');
   expect(created!.skills).toHaveLength(1);
+});
+
+test('Library keyboard flow confirms and uninstalls selected Skills', async () => {
+  const value = await interactiveFixture();
+  const view = render(<App projectRoot={value.projectRoot} dataRoot={value.dataRoot}/>);
+  await waitForFrame(view, 'Ready');
+
+  view.stdin.write('2');
+  await waitForFrame(view, 'demo');
+  view.stdin.write(' ');
+  await waitForFrame(view, '[×] demo');
+  view.stdin.write('d');
+  await waitForFrame(view, 'Uninstall 1 Skill?');
+  view.stdin.write('y');
+  await waitForFrame(view, '● Uninstalled 1 Skill');
+
+  expect(await listLibrary(value.dataRoot)).toEqual([]);
 });
 
 test('Deck keyboard flow adds and removes a Skill', async () => {
