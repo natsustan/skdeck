@@ -4,6 +4,8 @@ Skdeck manages reusable [Agent Skills](https://agentskills.io/) as versioned
 Decks. Import complete Skills from GitHub, group immutable revisions into named
 Decks, and safely apply them to a project's `.agents/skills` directory.
 
+Website: [natsustan.github.io/skdeck](https://natsustan.github.io/skdeck)
+
 ## Requirements
 
 - Node.js 22 or newer

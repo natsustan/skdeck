@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>skdeck — versioned decks of Agent Skills</title>
+  <meta name="description" content="Import Agent Skills from GitHub, pin immutable revisions into named Decks, and apply them to a project's .agents/skills directory.">
+  <link rel="canonical" href="https://natsustan.github.io/skdeck/">
+  <meta property="og:title" content="skdeck">
+  <meta property="og:description" content="Manage reusable Agent Skills as versioned Decks.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://natsustan.github.io/skdeck/">
+  <meta property="og:image" content="https://natsustan.github.io/skdeck/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://natsustan.github.io/skdeck/og.png">
+  <meta name="theme-color" content="#0e1211">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "skdeck",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS, Linux, Windows",
+      "license": "https://opensource.org/licenses/MIT",
+      "url": "https://natsustan.github.io/skdeck/",
+      "downloadUrl": "https://www.npmjs.com/package/skdeck",
+      "description": "Manage reusable Agent Skills as versioned Decks."
+    }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="site-header wrap">
+    <a class="wordmark" href="./">SKDECK</a>
+    <nav class="nav" aria-label="Site">
+      <a href="#concepts">Concepts</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#safety">Safety</a>
+      <a href="#commands">Commands</a>
+      <a href="https://github.com/natsustan/skdeck">GitHub</a>
+      <a href="https://www.npmjs.com/package/skdeck">npm</a>
+    </nav>
+  </header>
+
+  <main id="content">
+    <section class="hero wrap">
+      <p class="kicker">CLI · Node 22+ · MIT</p>
+      <h1>Versioned decks of<br>Agent Skills.</h1>
+      <p class="lede">
+        Import complete <a href="https://agentskills.io/">Agent Skills</a> from GitHub,
+        pin each revision to its source commit and content hash, and apply a named Deck
+        to a project’s <code>.agents/skills</code> directory.
+      </p>
+      <div class="install">
+        <div class="install-tabs" role="group" aria-label="Install method">
+          <button type="button" aria-pressed="true" data-cmd="npx">npx</button>
+          <button type="button" aria-pressed="false" data-cmd="npm">npm</button>
+        </div>
+        <div class="install-row">
+          <span class="prompt" aria-hidden="true">$</span>
+          <code id="install-cmd">npx skdeck</code>
+          <button type="button" class="copy" aria-label="Copy install command">copy</button>
+        </div>
+      </div>
+      <p class="meta">
+        <span>TTY full-screen UI</span>
+        <span>Immutable Library revisions</span>
+        <span>Preview before apply</span>
+      </p>
+
+      <div class="tui-deck">
+        <div class="tui" role="region" aria-label="skdeck interface preview">
+          <div class="tui-bar">
+            <span class="tui-brand">SKDECK</span>
+            <div class="tui-tabs" role="tablist" aria-label="Preview screens">
+              <button type="button" role="tab" id="tab-discover" data-screen="screen-discover" aria-controls="screen-discover" aria-selected="false" tabindex="-1">1 Discover</button>
+              <button type="button" role="tab" id="tab-library" data-screen="screen-library" aria-controls="screen-library" aria-selected="false" tabindex="-1">2 Library</button>
+              <button type="button" role="tab" id="tab-decks" data-screen="screen-decks" aria-controls="screen-decks" aria-selected="true" tabindex="0">3 Decks</button>
+              <button type="button" role="tab" id="tab-project" data-screen="screen-project" aria-controls="screen-project" aria-selected="false" tabindex="-1">4 Project</button>
+            </div>
+            <span class="tui-quit">q quit</span>
+          </div>
+
+          <div class="tui-frame">
+            <div class="screen" id="screen-discover" role="tabpanel" aria-labelledby="tab-discover" hidden>
+              <p class="screen-title">Import complete Skills from GitHub</p>
+              <p class="dim">Space selects · Enter imports · Esc discards checkout</p>
+              <ul class="list">
+                <li><span class="cursor">›</span> [<span class="cyan">×</span>] anti-ui-slop <span class="dim">skills/anti-ui-slop</span></li>
+                <li>&nbsp; [<span class="cyan">×</span>] ui-design <span class="dim">skills/ui-design</span></li>
+                <li>&nbsp; [&nbsp;] ui-radar <span class="dim">skills/ui-radar</span></li>
+                <li>&nbsp; [&nbsp;] terminal-ui <span class="dim">skills/terminal-ui</span></li>
+              </ul>
+            </div>
+
+            <div class="screen" id="screen-library" role="tabpanel" aria-labelledby="tab-library" hidden>
+              <div class="pane-head">
+                <span class="screen-title">Library</span>
+                <span class="dim">Sort: Recently installed</span>
+              </div>
+              <ul class="list">
+                <li><span class="cursor">›</span> [<span class="cyan">×</span>] anti-ui-slop <span class="dim">uizze/uizze@b3c1a90</span></li>
+                <li>&nbsp; [<span class="cyan">×</span>] ui-design <span class="dim">uizze/uizze@b3c1a90</span></li>
+                <li>&nbsp; [&nbsp;] terminal-ui <span class="dim">natsustan/skdeck@f0e1d2c</span></li>
+              </ul>
+              <p class="tui-hint">Space select · s change sort · a add to Deck · d uninstall selected · Deck references stay pinned</p>
+            </div>
+
+            <div class="screen" id="screen-decks" role="tabpanel" aria-labelledby="tab-decks">
+              <p class="screen-title">Decks · reusable Skill sets</p>
+              <div class="panes">
+                <div class="pane active">
+                  <div class="pane-head"><span>Decks</span><span class="dim">2</span></div>
+                  <ul class="list">
+                    <li class="row"><span class="cursor">› frontend</span><span class="dim">3</span></li>
+                    <li class="row"><span>&nbsp; backend</span><span class="dim">4</span></li>
+                  </ul>
+                </div>
+                <div class="pane">
+                  <div class="pane-head"><span>Hand · frontend</span><span class="dim">3 cards</span></div>
+                  <ul class="list">
+                    <li class="row"><span class="skill-cursor">◆ anti-ui-slop</span><span class="dim">uizze/uizze@b3c1a90</span></li>
+                    <li class="row"><span>&nbsp; ui-design</span><span class="dim">uizze/uizze@b3c1a90</span></li>
+                    <li class="row"><span>&nbsp; terminal-ui</span><span class="dim">natsustan/skdeck@f0e1d2c</span></li>
+                  </ul>
+                </div>
+              </div>
+              <p class="tui-hint"><span class="keys">←/→</span> focus · <span class="keys">↑/↓</span> choose · n new · r rename · a add Skills · d remove · x delete Deck</p>
+            </div>
+
+            <div class="screen" id="screen-project" role="tabpanel" aria-labelledby="tab-project" hidden>
+              <p class="screen-title">Project · ./my-project</p>
+              <div class="panes">
+                <div class="pane active">
+                  <div class="pane-head">Available Decks</div>
+                  <ul class="list">
+                    <li class="row"><span class="cursor">› frontend</span><span class="dim">Installed</span></li>
+                    <li class="row"><span>&nbsp; backend</span><span class="dim">Not installed</span></li>
+                  </ul>
+                </div>
+                <div class="pane">
+                  <div class="pane-head">Installed in this project</div>
+                  <ul class="list">
+                    <li>&nbsp; frontend</li>
+                  </ul>
+                </div>
+              </div>
+              <p class="tui-hint"><span class="keys">↑/↓</span> choose · Enter apply · x remove · changes are reviewed before execution</p>
+            </div>
+          </div>
+
+          <div class="tui-status"><span class="dot">Ready</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" id="concepts">
+      <h2>Concepts</h2>
+      <p class="section-lead">Three objects. Everything else is a command around them.</p>
+      <div class="objects">
+        <article class="object">
+          <span class="tag">01</span>
+          <h3>Library</h3>
+          <p>Locally imported Skill revisions. Each one is pinned to its source commit and a content hash, so a Deck never silently drifts.</p>
+        </article>
+        <article class="object">
+          <span class="tag">02</span>
+          <h3>Deck</h3>
+          <p>A named, reusable selection of Library revisions. Build a frontend hand, a review hand, a company-standard hand — then reuse it.</p>
+        </article>
+        <article class="object">
+          <span class="tag">03</span>
+          <h3>Project</h3>
+          <p>The directory that receives a Deck. Managed Skills are written under <code>.agents/skills</code>, with ownership recorded in <code>.agents/skdeck.lock</code>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section wrap" id="workflow">
+      <h2>Workflow</h2>
+      <p class="section-lead">Import, compose, preview, apply. The full-screen UI is the default; the named commands below follow the same path and also require a TTY.</p>
+      <div class="steps">
+        <article class="step">
+          <span class="step-index">add</span>
+          <div>
+            <h3>Import from GitHub</h3>
+            <p>Point at a repository, a skills directory, or a single Skill URL. skdeck discovers complete Skills and imports the ones you select.</p>
+            <pre><code>skdeck add https://github.com/owner/repo/tree/main/skills</code></pre>
+          </div>
+        </article>
+        <article class="step">
+          <span class="step-index">decks</span>
+          <div>
+            <h3>Compose a Deck</h3>
+            <p>Open the interface, pick Library entries, and add them to a new or existing Deck. Revisions stay pinned after you add them.</p>
+            <pre><code>skdeck</code></pre>
+          </div>
+        </article>
+        <article class="step">
+          <span class="step-index">use</span>
+          <div>
+            <h3>Preview, then apply</h3>
+            <p>Applying a Deck always shows the plan first. Confirm to write Skills into the project; cancel leaves the tree unchanged.</p>
+            <pre><code>skdeck use frontend --project ./my-project</code></pre>
+          </div>
+        </article>
+        <article class="step">
+          <span class="step-index">remove</span>
+          <div>
+            <h3>Inspect and remove</h3>
+            <p>List local Decks and Library entries, or preview a removal before uninstalling a Deck from a project.</p>
+            <pre><code>skdeck list
+skdeck remove frontend --project ./my-project</code></pre>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section wrap" id="safety">
+      <h2>Safety</h2>
+      <p class="section-lead">skdeck manages user files and untrusted GitHub content. The apply path is a plan, not a silent copy.</p>
+      <div class="plan" role="region" aria-label="Apply plan preview">
+        <h3>Apply “frontend”?</h3>
+        <ol>
+          <li><span class="green">ADD      </span>anti-ui-slop <span class="dim">— .agents/skills/anti-ui-slop</span></li>
+          <li><span class="green">ADD      </span>ui-design <span class="dim">— .agents/skills/ui-design</span></li>
+          <li><span class="warn">KEEP     </span>terminal-ui <span class="dim">— already this revision</span></li>
+          <li><span class="red">CONFLICT </span>review-notes <span class="dim">— unmanaged local Skill</span></li>
+        </ol>
+        <p class="hint">Resolve conflicts before continuing · Esc cancel</p>
+      </div>
+      <p class="note">
+        Unmanaged Skill directories are never overwritten. Managed Skills with local modifications are refused.
+        Shared revisions track ownership across Decks. Catalog and lock writes are atomic.
+        Deck entries pin to content-addressed, immutable Library revisions.
+      </p>
+    </section>
+
+    <section class="section wrap" id="commands">
+      <h2>Commands</h2>
+      <p class="section-lead">Running <code>skdeck</code> with no command opens the full-screen interface. <code>add</code>, <code>use</code>, and <code>remove</code> are interactive and require a TTY.</p>
+      <table class="commands">
+        <thead>
+          <tr>
+            <th scope="col">Command</th>
+            <th scope="col">What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>skdeck</td>
+            <td>Open the full-screen interface</td>
+          </tr>
+          <tr>
+            <td>skdeck add &lt;github-url&gt;</td>
+            <td>Discover and import Skills from GitHub</td>
+          </tr>
+          <tr>
+            <td>skdeck use [deck]</td>
+            <td>Preview and apply a Deck</td>
+          </tr>
+          <tr>
+            <td>skdeck remove [deck]</td>
+            <td>Preview and remove an installed Deck</td>
+          </tr>
+          <tr>
+            <td>skdeck list</td>
+            <td>List the Library and Decks</td>
+          </tr>
+          <tr>
+            <td>skdeck --help</td>
+            <td>Show all commands and options</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">
+        <code>use</code> and <code>remove</code> accept <code>-p, --project &lt;path&gt;</code> and default to the current directory.
+        Catalog data lives in the platform data directory; set <code>SKDECK_HOME</code> to override it.
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap">
+    <span>skdeck · MIT</span>
+    <nav class="nav" aria-label="Footer">
+      <a href="https://github.com/natsustan/skdeck">Source</a>
+      <a href="https://www.npmjs.com/package/skdeck">npm</a>
+      <a href="https://github.com/natsustan/skdeck/blob/main/LICENSE">License</a>
+    </nav>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>
