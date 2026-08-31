@@ -1,18 +1,17 @@
 :root {
-  --bg: #0e1211;
-  --bg-raised: #161c1a;
-  --bg-tui: #0a0d0c;
-  --line: #2c3834;
-  --line-strong: #44554e;
-  --text: #e6eeea;
-  --dim: #8a9791;
-  --mute: #5c6863;
-  --cyan: #3ee0c5;
-  --cyan-dim: #163833;
-  --gold: #e4c35a;
-  --green: #7dce8a;
-  --red: #e07a72;
-  --warn: #e0b45a;
+  --bg: #f3f1ea;
+  --bg-raised: #fffcf7;
+  --line: #d5d0c6;
+  --line-strong: #b9b3a6;
+  --text: #1c211f;
+  --dim: #5f6864;
+  --mute: #7a827e;
+  --cyan: #0f7a6e;
+  --cyan-dim: #d7efe9;
+  --gold: #8a6414;
+  --green: #1b7f45;
+  --red: #c23d36;
+  --warn: #9a6b12;
   --sans: "IBM Plex Sans", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --measure: 62rem;
@@ -28,7 +27,7 @@
 html {
   background: var(--bg);
   color: var(--text);
-  color-scheme: dark;
+  color-scheme: light;
   font-family: var(--sans);
   font-size: 16px;
   line-height: 1.5;
@@ -38,9 +37,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 480px at 50% -120px, rgb(62 224 197 / 0.07), transparent 60%),
-    var(--bg);
+  background: var(--bg);
 }
 
 a {
@@ -64,7 +61,7 @@ a:hover {
   top: -3rem;
   z-index: 20;
   background: var(--cyan);
-  color: var(--bg);
+  color: #fff;
   padding: 0.4rem 0.7rem;
   font-family: var(--mono);
   font-size: 0.8rem;
@@ -118,11 +115,11 @@ a:hover {
 }
 
 .hero {
-  padding: 2.5rem 0 2rem;
+  padding: 2.25rem 0 2rem;
 }
 
 .kicker {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.75rem;
   color: var(--gold);
   font-family: var(--mono);
   font-size: 0.8rem;
@@ -138,20 +135,20 @@ h3 {
 }
 
 h1 {
-  margin: 0 0 1rem;
-  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  margin: 0 0 0.85rem;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
 }
 
 .lede {
-  max-width: 46rem;
-  margin: 0 0 1.5rem;
+  max-width: 38rem;
+  margin: 0 0 1.35rem;
   color: var(--dim);
-  font-size: 1.12rem;
+  font-size: 1.08rem;
 }
 
 .lede code,
-.prose code,
-.note code {
+.note code,
+.glossary code {
   font-family: var(--mono);
   font-size: 0.92em;
   color: var(--text);
@@ -162,7 +159,7 @@ h1 {
   flex-wrap: wrap;
   align-items: stretch;
   gap: 0.6rem 1rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 1rem;
 }
 
 .install-tabs {
@@ -195,7 +192,7 @@ h1 {
   max-width: 36rem;
   padding: 0.45rem 0.55rem 0.45rem 0.85rem;
   border: 1px solid var(--line-strong);
-  background: var(--bg-tui);
+  background: var(--bg-raised);
   font-family: var(--mono);
 }
 
@@ -214,7 +211,7 @@ h1 {
   appearance: none;
   flex-shrink: 0;
   border: 1px solid var(--line);
-  background: var(--bg-raised);
+  background: var(--bg);
   color: var(--dim);
   font-family: var(--mono);
   font-size: 0.75rem;
@@ -228,19 +225,34 @@ h1 {
   color: var(--cyan);
 }
 
-.meta {
+.glossary {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem 1rem;
-  margin: 0 0 2rem;
-  color: var(--mute);
+  gap: 0.35rem 1.35rem;
+  margin: 0 0 1.75rem;
+  color: var(--dim);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
+}
+
+.glossary strong {
+  margin-right: 0.4rem;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .tui {
-  border: 1px solid var(--line-strong);
-  background: var(--bg-tui);
+  --text: #e6eeea;
+  --dim: #8a9791;
+  --mute: #6b7671;
+  --cyan: #3ee0c5;
+  --gold: #e4c35a;
+  --green: #7dce8a;
+  --line: #2c3834;
+  --line-strong: #44554e;
+  border: 1px solid #1c2421;
+  background: #121614;
+  color: var(--text);
   font-family: var(--mono);
   font-size: 0.82rem;
   line-height: 1.45;
@@ -259,6 +271,8 @@ h1 {
 .tui-hint {
   margin: 0.7rem 0 0;
   padding: 0;
+  white-space: normal;
+  color: var(--mute);
 }
 
 .tui-bar {
@@ -313,10 +327,6 @@ h1 {
 
 .dim {
   color: var(--dim);
-}
-
-.gold {
-  color: var(--gold);
 }
 
 .cyan {
@@ -393,15 +403,6 @@ h1 {
   font-family: var(--sans);
 }
 
-.tui-hint {
-  white-space: normal;
-}
-
-.tui-hint,
-.tui-status {
-  color: var(--mute);
-}
-
 .tui-status {
   border-top: 1px solid var(--line);
   color: var(--green);
@@ -413,12 +414,12 @@ h1 {
 }
 
 .section {
-  padding: 3rem 0;
+  padding: 2.4rem 0;
   border-top: 1px solid var(--line);
 }
 
 .section h2 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.85rem;
   font-family: var(--mono);
   font-size: 0.8rem;
   font-weight: 500;
@@ -433,85 +434,16 @@ h1 {
 }
 
 .section-lead {
-  margin: 0 0 1.4rem;
-  max-width: 42rem;
+  margin: 0 0 1rem;
+  max-width: 40rem;
   color: var(--dim);
-}
-
-.objects {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.object {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.9rem 1rem 1rem;
-  background: var(--bg-raised);
-}
-
-.object p {
-  margin: 0;
-  color: var(--dim);
-  font-size: 0.95rem;
-}
-
-.object .tag {
-  display: inline-block;
-  margin-bottom: 0.55rem;
-  color: var(--gold);
-  font-family: var(--mono);
-  font-size: 0.75rem;
-}
-
-.steps {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.step {
-  display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
-  padding: 0.9rem 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.step:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.step-index {
-  color: var(--cyan);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  padding-top: 0.2rem;
-}
-
-.step p {
-  margin: 0.15rem 0 0.7rem;
-  color: var(--dim);
-}
-
-pre {
-  margin: 0;
-  padding: 0.7rem 0.8rem;
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  background: var(--bg-tui);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  line-height: 1.5;
 }
 
 .plan {
   border: 1px solid var(--cyan);
   border-radius: 6px;
   padding: 0.85rem 1rem 1rem;
-  background: var(--bg-tui);
+  background: var(--bg-raised);
   font-family: var(--mono);
   font-size: 0.82rem;
 }
@@ -549,7 +481,7 @@ pre {
 .commands td {
   text-align: left;
   vertical-align: top;
-  padding: 0.65rem 0.75rem 0.65rem 0;
+  padding: 0.55rem 0.75rem 0.55rem 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -589,7 +521,6 @@ pre {
 }
 
 @media (max-width: 800px) {
-  .objects,
   .panes {
     grid-template-columns: 1fr;
   }
@@ -603,11 +534,6 @@ pre {
     white-space: normal;
   }
 
-  pre {
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
   .tui-bar {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -615,11 +541,6 @@ pre {
 
   .tui-quit {
     display: none;
-  }
-
-  .step {
-    grid-template-columns: 1fr;
-    gap: 0.35rem;
   }
 
   .commands td:first-child {
