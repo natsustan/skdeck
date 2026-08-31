@@ -14,7 +14,15 @@ async function readDeck(id: string, root: string): Promise<Deck> {
 export async function listDecks(root = dataRoot()): Promise<Deck[]> {
   let entries;
   try { entries = await readdir(join(root, 'decks'), {withFileTypes: true}); } catch { return []; }
-  const decks = await Promise.all(entries.filter(entry => entry.isFile() && entry.name.endsWith('.json')).map(entry => readJson(join(root, 'decks', entry.name), deckSchema)));
+  const decks: Deck[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+    try { decks.push(await readJson(join(root, 'decks', entry.name), deckSchema)); }
+    catch (error) {
+      if (error instanceof Error && (error.cause as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') continue;
+      throw error;
+    }
+  }
   return decks.sort((a, b) => a.name.localeCompare(b.name));
 }
 
