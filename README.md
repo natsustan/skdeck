@@ -5,8 +5,6 @@ Deck to any project. Import complete Skills from GitHub, group immutable
 revisions into Decks, and safely apply them to a project's `.agents/skills`
 directory.
 
-Website: [natsustan.github.io/skdeck](https://natsustan.github.io/skdeck)
-
 ## Requirements
 
 - Node.js 22 or newer
