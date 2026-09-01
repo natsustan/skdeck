@@ -1,7 +1,7 @@
 {
   "name": "skdeck",
   "version": "0.1.0",
-  "description": "Manage reusable Agent Skills as versioned decks",
+  "description": "Pin Agent Skills into a named Deck, and apply that Deck to any project",
   "license": "MIT",
   "repository": {
     "type": "git",

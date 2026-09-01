@@ -1,8 +1,9 @@
 # Skdeck
 
-Skdeck manages reusable [Agent Skills](https://agentskills.io/) as versioned
-Decks. Import complete Skills from GitHub, group immutable revisions into named
-Decks, and safely apply them to a project's `.agents/skills` directory.
+Pin [Agent Skills](https://agentskills.io/) into a named Deck, and apply that
+Deck to any project. Import complete Skills from GitHub, group immutable
+revisions into Decks, and safely apply them to a project's `.agents/skills`
+directory.
 
 Website: [natsustan.github.io/skdeck](https://natsustan.github.io/skdeck)
 
@@ -22,7 +23,7 @@ npx skdeck
 Or install the CLI globally:
 
 ```sh
-npm install --global skdeck
+npm i -g skdeck
 skdeck
 ```
 
