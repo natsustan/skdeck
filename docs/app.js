@@ -1,5 +1,5 @@
 const npxCommand = 'npx skdeck';
-const npmCommand = 'npm install --global skdeck';
+const npmCommand = 'npm i -g skdeck';
 
 const installCmd = document.querySelector('#install-cmd');
 const installTabs = [...document.querySelectorAll('.install-tabs button')];
